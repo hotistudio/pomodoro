@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌱 뽀모도로 타이머</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e24b4a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="뽀모도로">
+<link rel="apple-touch-icon" href="icons/icon192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f3;
+    --bg3: #eeede8;
+    --text: #1a1a18;
+    --text2: #6b6b67;
+    --text3: #9b9b97;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg2: #252523;
+      --bg3: #2e2e2c;
+      --text: #f0efe8;
+      --text2: #9b9b97;
+      --text3: #6b6b67;
+      --border: rgba(255,255,255,0.12);
+      --border2: rgba(255,255,255,0.22);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg3); font-family: var(--font); color: var(--text); min-height: 100vh; display: flex; justify-content: center; padding: 2rem 1rem; }
+  .app { width: 100%; max-width: 520px; }
+
+  .header { text-align: center; margin-bottom: 1.5rem; }
+  .header h1 { font-size: 22px; font-weight: 500; color: var(--text); }
+  .header p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+
+  .tabs { display: flex; gap: 3px; background: var(--bg2); border-radius: var(--radius-md); padding: 4px; margin-bottom: 1rem; }
+  .tab { flex: 1; padding: 7px 2px; border: none; background: transparent; cursor: pointer; border-radius: 6px; font-size: 12px; color: var(--text2); font-weight: 400; transition: all 0.15s; font-family: var(--font); }
+  .tab.active { background: var(--bg); color: var(--text); font-weight: 500; border: 0.5px solid var(--border); }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Timer */
+  .mode-btns { display: flex; gap: 8px; justify-content: center; margin-bottom: 1.25rem; }
+  .mode-btn { padding: 6px 14px; border: 0.5px solid var(--border2); background: transparent; border-radius: 20px; cursor: pointer; font-size: 13px; color: var(--text2); font-family: var(--font); transition: all 0.15s; }
+  .mode-btn.active { background: var(--bg2); color: var(--text); font-weight: 500; }
+  .timer-ring { position: relative; width: 200px; height: 200px; margin: 0 auto 1.1rem; }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+  .ring-fill { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 0.5s; }
+  .timer-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; pointer-events: none; }
+  .timer-display { font-size: 46px; font-weight: 500; color: var(--text); letter-spacing: -2px; }
+  .timer-label { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 1.1rem; }
+  .ctrl-btn { padding: 10px 28px; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: transparent; cursor: pointer; font-size: 14px; color: var(--text); font-weight: 500; font-family: var(--font); transition: all 0.15s; }
+  .ctrl-btn:hover { background: var(--bg2); }
+  .ctrl-btn.primary { color: #fff; border-color: transparent; transition: background 0.4s; }
+  .session-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 1.1rem; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); transition: background 0.3s; }
+
+  .plant-stage-area { background: var(--bg2); border-radius: var(--radius-lg); padding: .9rem; margin-bottom: .9rem; display: flex; align-items: center; gap: 14px; }
+  .plant-canvas-wrap { width: 68px; height: 68px; flex-shrink: 0; }
+  .plant-info { flex: 1; }
+  .plant-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .plant-stage-label { font-size: 12px; color: var(--text2); margin-top: 2px; margin-bottom: 6px; }
+  .grow-bar-wrap { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .grow-bar { height: 100%; border-radius: 3px; transition: width 0.5s, background 0.5s; }
+  .grow-hint { font-size: 11px; color: var(--text3); margin-top: 5px; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 9px; margin-bottom: .9rem; }
+  .metric { background: var(--bg2); border-radius: var(--radius-md); padding: 11px; text-align: center; }
+  .metric-val { font-size: 20px; font-weight: 500; color: var(--text); }
+  .metric-lbl { font-size: 11px; color: var(--text2); margin-top: 3px; }
+
+  .theme-section { margin-bottom: .9rem; }
+  .theme-label { font-size: 12px; color: var(--text2); margin-bottom: 7px; }
+  .theme-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .s-chip { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s, transform 0.15s; }
+  .s-chip.active { border-color: var(--text); transform: scale(1.12); }
+  .c-chip { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s, transform 0.15s; }
+  .c-chip.active { border-color: var(--text); transform: scale(1.15); }
+  .chip-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .chip-lbl { font-size: 10px; color: var(--text3); }
+
+  /* Stats */
+  .period-btns { display: flex; gap: 4px; background: var(--bg2); border-radius: var(--radius-md); padding: 4px; margin-bottom: 1rem; }
+  .period-btn { flex: 1; padding: 6px; border: none; background: transparent; cursor: pointer; border-radius: 6px; font-size: 13px; color: var(--text2); font-family: var(--font); transition: all 0.15s; }
+  .period-btn.active { background: var(--bg); color: var(--text); font-weight: 500; border: 0.5px solid var(--border); }
+  .chart-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: .9rem; display: flex; align-items: center; justify-content: space-between; }
+  .chart-sub { font-size: 11px; color: var(--text3); font-weight: 400; }
+  .tag-row { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+  .tag-name { font-size: 12px; color: var(--text2); width: 52px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-bar-wrap { flex: 1; height: 7px; background: var(--bg2); border-radius: 4px; overflow: hidden; }
+  .tag-bar { height: 100%; border-radius: 4px; transition: width 0.4s, background 0.5s; }
+  .tag-val { font-size: 12px; color: var(--text2); width: 32px; text-align: right; }
+  .tag-del { width: 18px; height: 18px; border-radius: 50%; border: 0.5px solid var(--border2); background: transparent; cursor: pointer; font-size: 13px; color: var(--text2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font); line-height: 1; }
+  .add-tag-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .add-tag-row input { flex: 1; padding: 7px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius-md); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font); outline: none; }
+  .add-tag-row input:focus { border-color: var(--text2); }
+  .add-tag-btn { padding: 7px 12px; border: 0.5px solid var(--border2); border-radius: var(--radius-md); background: transparent; cursor: pointer; font-size: 13px; color: var(--text); font-family: var(--font); white-space: nowrap; }
+  .week-labels { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; margin-bottom: 4px; }
+  .week-label { font-size: 10px; color: var(--text3); text-align: center; }
+  .heatmap-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; }
+  .heat-cell { aspect-ratio: 1; border-radius: 3px; }
+
+  /* Collection */
+  .coin-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .coin-badge { display: flex; align-items: center; gap: 7px; background: var(--bg2); border-radius: 20px; padding: 7px 13px; }
+  .coin-circle { width: 16px; height: 16px; border-radius: 50%; background: #ef9f27; flex-shrink: 0; }
+  .filter-btns { display: flex; gap: 5px; }
+  .filter-btn { padding: 5px 10px; border: 0.5px solid var(--border2); background: transparent; border-radius: 16px; cursor: pointer; font-size: 12px; color: var(--text2); font-family: var(--font); transition: all 0.15s; }
+  .filter-btn.active { background: var(--bg2); color: var(--text); font-weight: 500; }
+  .col-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 9px; }
+  .plant-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 12px 8px; text-align: center; cursor: pointer; transition: border-color 0.15s; position: relative; }
+  .plant-card:hover { border-color: var(--border2); }
+  .plant-card.locked { opacity: 0.45; }
+  .plant-card.selected { border-width: 1.5px; }
+  .rarity-badge { position: absolute; top: 7px; right: 7px; font-size: 10px; padding: 2px 5px; border-radius: 7px; font-weight: 500; }
+  .r-common { background:#eaf3de;color:#3b6d11; }
+  .r-rare { background:#e6f1fb;color:#185fa5; }
+  .r-legend { background:#faeeda;color:#854f0b; }
+  .plant-card-name { font-size: 12px; font-weight: 500; color: var(--text); margin-top: 6px; }
+  .plant-card-hint { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .unlock-cost { font-size: 11px; color: #854f0b; margin-top: 3px; font-weight: 500; }
+
+  /* Forest */
+  .forest-wrap { border-radius: var(--radius-lg); width: 100%; height: 220px; position: relative; overflow: hidden; margin-bottom: .9rem; transition: background 0.5s; }
+  .forest-empty { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 13px; color: var(--text2); text-align: center; line-height: 1.7; }
+  .streak-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .9rem 1.1rem; display: flex; align-items: center; gap: 13px; }
+  .streak-icon { width: 38px; height: 38px; border-radius: 50%; background: #faeeda; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .streak-flame { width: 14px; height: 18px; background: #ef9f27; border-radius: 50% 50% 40% 40%; }
+  .streak-days { font-size: 20px; font-weight: 500; color: var(--text); }
+  .streak-desc { font-size: 12px; color: var(--text2); }
+  .streak-reward { font-size: 11px; color: #854f0b; font-weight: 500; margin-top: 2px; }
+
+  /* Settings */
+  .settings-section { margin-bottom: 1.4rem; }
+  .settings-title { font-size: 11px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 0.5px solid var(--border); }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-lbl { font-size: 14px; color: var(--text); }
+  .setting-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .setting-input { width: 62px; text-align: center; padding: 7px; border: 0.5px solid var(--border2); border-radius: var(--radius-md); background: var(--bg); color: var(--text); font-size: 14px; font-family: var(--font); outline: none; }
+  .toggle { width: 38px; height: 21px; background: var(--border2); border-radius: 11px; cursor: pointer; position: relative; transition: background 0.2s; border: none; flex-shrink: 0; }
+  .toggle.on { background: #3b6d11; }
+  .toggle::after { content:''; position: absolute; width: 15px; height: 15px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: left 0.2s; }
+  .toggle.on::after { left: 20px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius-md); padding: 10px 18px; font-size: 13px; color: var(--text); white-space: nowrap; transition: transform 0.3s; z-index: 1000; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 480px) {
+    body { padding: 1rem 0.5rem; }
+    .timer-display { font-size: 40px; }
+    .col-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>🌱 뽀모도로</h1>
+    <p>집중할수록 숲이 자라요</p>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('timer')">타이머</button>
+    <button class="tab" onclick="switchTab('stats')">통계</button>
+    <button class="tab" onclick="switchTab('collection')">수집</button>
+    <button class="tab" onclick="switchTab('forest')">내 숲</button>
+    <button class="tab" onclick="switchTab('settings')">설정</button>
+  </div>
+
+  <!-- TIMER -->
+  <div id="view-timer" class="view active">
+    <div class="mode-btns">
+      <button class="mode-btn active" onclick="setMode('focus',this)">집중</button>
+      <button class="mode-btn" onclick="setMode('short',this)">짧은 휴식</button>
+      <button class="mode-btn" onclick="setMode('long',this)">긴 휴식</button>
+    </div>
+    <div class="timer-ring">
+      <svg width="200" height="200" viewBox="0 0 200 200">
+        <circle class="ring-bg" cx="100" cy="100" r="90"/>
+        <circle class="ring-fill" id="ring" cx="100" cy="100" r="90" stroke-dasharray="565" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-center">
+        <div class="timer-display" id="timer-display">25:00</div>
+        <div class="timer-label" id="timer-label">집중 시간</div>
+      </div>
+    </div>
+    <div class="session-dots" id="dots"></div>
+    <div class="controls">
+      <button class="ctrl-btn" onclick="resetTimer()">리셋</button>
+      <button class="ctrl-btn primary" id="start-btn" onclick="toggleTimer()">시작</button>
+    </div>
+    <div class="plant-stage-area">
+      <div class="plant-canvas-wrap"><svg id="live-plant" width="68" height="68" viewBox="0 0 68 68"></svg></div>
+      <div class="plant-info">
+        <div class="plant-name" id="live-plant-name">참나무</div>
+        <div class="plant-stage-label" id="live-stage-label">씨앗 단계</div>
+        <div class="grow-bar-wrap"><div class="grow-bar" id="grow-bar" style="width:0%"></div></div>
+        <div class="grow-hint" id="grow-hint">집중 완료 시 성장해요</div>
+      </div>
+    </div>
+    <div class="summary-grid">
+      <div class="metric"><div class="metric-val" id="today-sessions">0</div><div class="metric-lbl">오늘 세션</div></div>
+      <div class="metric"><div class="metric-val" id="today-focus">0분</div><div class="metric-lbl">집중 시간</div></div>
+      <div class="metric"><div class="metric-val" id="coins-display">20</div><div class="metric-lbl">보유 코인</div></div>
+    </div>
+    <div class="theme-section">
+      <div class="theme-label">계절 테마</div>
+      <div class="theme-row" id="season-row"></div>
+    </div>
+    <div class="theme-section">
+      <div class="theme-label">색깔 테마</div>
+      <div class="theme-row" id="color-row"></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div id="view-stats" class="view">
+    <div class="summary-grid" style="margin-bottom:1rem;">
+      <div class="metric"><div class="metric-val">14시간</div><div class="metric-lbl">이번 주 집중</div></div>
+      <div class="metric"><div class="metric-val">34</div><div class="metric-lbl">완료 세션</div></div>
+      <div class="metric"><div class="metric-val">3일</div><div class="metric-lbl">연속 달성</div></div>
+    </div>
+    <div class="period-btns">
+      <button class="period-btn active" onclick="setPeriod('week',this)">주간</button>
+      <button class="period-btn" onclick="setPeriod('month',this)">월간</button>
+    </div>
+    <div class="card">
+      <div class="chart-title">일별 집중 시간 (분)</div>
+      <div style="position:relative;height:150px;"><canvas id="barChart" role="img" aria-label="일별 집중 시간 막대차트"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="chart-title"><span>태그별 분류</span><span class="chart-sub">클릭해서 편집</span></div>
+      <div id="tag-list"></div>
+      <div class="add-tag-row">
+        <input id="tag-input" type="text" placeholder="새 태그 이름" maxlength="10"/>
+        <button class="add-tag-btn" onclick="addTag()">추가</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="chart-title">활동 히트맵 (최근 28일)</div>
+      <div class="week-labels"><span class="week-label">월</span><span class="week-label">화</span><span class="week-label">수</span><span class="week-label">목</span><span class="week-label">금</span><span class="week-label">토</span><span class="week-label">일</span></div>
+      <div class="heatmap-grid" id="heatmap"></div>
+    </div>
+  </div>
+
+  <!-- COLLECTION -->
+  <div id="view-collection" class="view">
+    <div class="coin-bar">
+      <div class="coin-badge"><div class="coin-circle"></div><span style="font-size:14px;font-weight:500;color:var(--text);" id="coins-col">20</span><span style="font-size:12px;color:var(--text2);margin-left:2px;">코인</span></div>
+      <div class="filter-btns">
+        <button class="filter-btn active" onclick="filterCol('all',this)">전체</button>
+        <button class="filter-btn" onclick="filterCol('tree',this)">나무</button>
+        <button class="filter-btn" onclick="filterCol('flower',this)">꽃</button>
+      </div>
+    </div>
+    <div class="col-grid" id="col-grid"></div>
+  </div>
+
+  <!-- FOREST -->
+  <div id="view-forest" class="view">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;">
+      <div><div style="font-size:14px;font-weight:500;color:var(--text);">나의 숲</div><div style="font-size:12px;color:var(--text2);margin-top:2px;" id="forest-sub">완료한 세션이 식물이 됩니다</div></div>
+    </div>
+    <div class="forest-wrap" id="forest-wrap">
+      <div class="forest-empty" id="forest-empty">아직 숲이 비어있어요<br>집중 세션을 완료해보세요</div>
+      <svg id="forest-svg" width="100%" height="220" viewBox="0 0 640 220" style="display:none;"></svg>
+    </div>
+    <div class="streak-card">
+      <div class="streak-icon"><div class="streak-flame"></div></div>
+      <div class="streak-info">
+        <div class="streak-days">3일</div>
+        <div class="streak-desc">연속 달성 중</div>
+        <div class="streak-reward">5일 달성 시 희귀 씨앗 획득!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="view-settings" class="view">
+    <div class="card">
+      <div class="settings-section">
+        <div class="settings-title">시간 설정</div>
+        <div class="setting-row">
+          <div><div class="setting-lbl">집중 시간</div><div class="setting-sub">분</div></div>
+          <input class="setting-input" type="number" id="set-focus" value="25" min="1" max="90" onchange="applySettings()">
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-lbl">짧은 휴식</div><div class="setting-sub">분</div></div>
+          <input class="setting-input" type="number" id="set-short" value="5" min="1" max="30" onchange="applySettings()">
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-lbl">긴 휴식</div><div class="setting-sub">분</div></div>
+          <input class="setting-input" type="number" id="set-long" value="15" min="1" max="60" onchange="applySettings()">
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-lbl">긴 휴식 주기</div><div class="setting-sub">세션 수</div></div>
+          <input class="setting-input" type="number" id="set-sessions" value="4" min="2" max="8" onchange="applySettings()">
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-title">식물 성장</div>
+        <div class="setting-row">
+          <div><div class="setting-lbl">완성까지 필요 세션</div><div class="setting-sub" id="grow-sub">현재: 2번 집중 = 나무 1그루</div></div>
+          <input class="setting-input" type="number" id="set-grow" value="2" min="1" max="8" onchange="applySettings()">
+        </div>
+      </div>
+      <div class="settings-section" style="margin-bottom:0;">
+        <div class="settings-title">알림 / 자동화</div>
+        <div class="setting-row">
+          <div><div class="setting-lbl">완료 사운드</div><div class="setting-sub">세션 끝날 때 소리</div></div>
+          <button class="toggle on" id="toggle-sound" onclick="this.classList.toggle('on')"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-lbl">휴식 후 자동 시작</div><div class="setting-sub">휴식 종료 시 집중 자동 시작</div></div>
+          <button class="toggle" id="toggle-auto" onclick="this.classList.toggle('on')"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CIRC = 565;
+let CFG = { focus:25, short:5, long:15, sessions:4, growSteps:2 };
+let mode='focus', timeLeft=CFG.focus*60, totalTime=CFG.focus*60;
+let running=false, iv=null;
+let completedSessions=0, todaySessions=0, todayFocus=0;
+let coins=20, growProgress=0, selectedPlantId='oak', colFilter='all';
+let forestPlants=[];
+let audioCtx=null;
+
+const SEASONS=[
+  {id:'spring',label:'봄',accent:'#d4537e',sky:'#fbeaf0',ground:'#c0dd97',groundDark:'#97c459',heatBase:'#f4c0d1'},
+  {id:'summer',label:'여름',accent:'#1d9e75',sky:'#e1f5ee',ground:'#97c459',groundDark:'#639922',heatBase:'#9fe1cb'},
+  {id:'autumn',label:'가을',accent:'#d85a30',sky:'#faeeda',ground:'#ef9f27',groundDark:'#ba7517',heatBase:'#fac775'},
+  {id:'winter',label:'겨울',accent:'#185fa5',sky:'#ddeeff',ground:'#ddeeff',groundDark:'#b5d4f4',heatBase:'#85b7eb'},
+];
+const COLOR_THEMES=[
+  {id:'red',color:'#e24b4a'},{id:'orange',color:'#ef9f27'},{id:'yellow',color:'#c9b800'},
+  {id:'green',color:'#3b6d11'},{id:'blue',color:'#3266ad'},{id:'indigo',color:'#534ab7'},{id:'violet',color:'#993556'},
+];
+let currentSeason=SEASONS[0], currentColor=COLOR_THEMES[3], useColorTheme=false;
+function acc(){return useColorTheme?currentColor.color:currentSeason.accent;}
+
+let tags=[
+  {name:'공부',sessions:22},{name:'업무',sessions:12},{name:'독서',sessions:4},
+];
+
+const PLANTS=[
+  {id:'oak',name:'참나무',type:'tree',rarity:'common',cost:0,stages:['seed','sprout','sapling','tree'],unlocked:true},
+  {id:'cherry',name:'벚나무',type:'tree',rarity:'rare',cost:30,stages:['seed','sprout','sapling','tree'],unlocked:false},
+  {id:'pine',name:'소나무',type:'tree',rarity:'common',cost:15,stages:['seed','sprout','sapling','tree'],unlocked:false},
+  {id:'maple',name:'단풍나무',type:'tree',rarity:'rare',cost:40,stages:['seed','sprout','sapling','tree'],unlocked:false},
+  {id:'rose',name:'장미',type:'flower',rarity:'common',cost:10,stages:['seed','bud','bloom','fullbloom'],unlocked:false},
+  {id:'sunflower',name:'해바라기',type:'flower',rarity:'common',cost:12,stages:['seed','bud','bloom','fullbloom'],unlocked:false},
+  {id:'lotus',name:'연꽃',type:'flower',rarity:'legend',cost:80,stages:['seed','bud','bloom','fullbloom'],unlocked:false},
+  {id:'lavender',name:'라벤더',type:'flower',rarity:'rare',cost:35,stages:['seed','bud','bloom','fullbloom'],unlocked:false},
+  {id:'cosmos',name:'코스모스',type:'flower',rarity:'common',cost:8,stages:['seed','bud','bloom','fullbloom'],unlocked:false},
+];
+const PC={
+  oak:{trunk:'#854f0b',leaf:'#3b6d11',leaf2:'#639922'},
+  cherry:{trunk:'#712b13',leaf:'#d4537e',leaf2:'#ed93b1'},
+  pine:{trunk:'#633806',leaf:'#085041',leaf2:'#0f6e56'},
+  maple:{trunk:'#854f0b',leaf:'#d85a30',leaf2:'#ef9f27'},
+  rose:{stem:'#3b6d11',petal:'#d4537e',petal2:'#f4c0d1',center:'#ef9f27'},
+  sunflower:{stem:'#3b6d11',petal:'#ef9f27',petal2:'#ba7517',center:'#633806'},
+  lotus:{stem:'#0f6e56',petal:'#ed93b1',petal2:'#f4c0d1',center:'#ef9f27'},
+  lavender:{stem:'#3b6d11',petal:'#afa9ec',petal2:'#7f77dd',center:'#534ab7'},
+  cosmos:{stem:'#3b6d11',petal:'#f0997b',petal2:'#d85a30',center:'#ef9f27'},
+};
+
+function pdata(id){return PLANTS.find(p=>p.id===id);}
+const ns='http://www.w3.org/2000/svg';
+function svgEl(tag,attrs){const e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));return e;}
+
+function drawPlant(svgEl2,plantId,stage,size){
+  svgEl2.innerHTML='';
+  const s=size||68,cx=s/2,by=s;
+  const c=PC[plantId]||PC.oak,p=pdata(plantId),isFlower=p&&p.type==='flower';
+  if(stage==='seed'){svgEl2.appendChild(svgEl('ellipse',{cx,cy:by-7,rx:7,ry:5,fill:c.trunk||c.stem}));return;}
+  if(!isFlower){
+    const h={sprout:11,sapling:26,tree:44}[stage]||44;
+    const tw=stage==='sprout'?3:stage==='sapling'?4:6;
+    svgEl2.appendChild(svgEl('rect',{x:cx-tw/2,y:by-h,width:tw,height:h,rx:2,fill:c.trunk}));
+    if(stage==='sprout'){
+      svgEl2.appendChild(svgEl('ellipse',{cx,cy:by-h-6,rx:8,ry:7,fill:c.leaf}));
+    }else if(stage==='sapling'){
+      [[cx,by-h-9,11,8],[cx-7,by-h,7,6],[cx+7,by-h,7,6]].forEach(([ex,ey,rx,ry])=>svgEl2.appendChild(svgEl('ellipse',{cx:ex,cy:ey,rx,ry,fill:c.leaf})));
+    }else{
+      [[cx,by-h-13,17,13,0],[cx-12,by-h-2,12,10,1],[cx+12,by-h-2,12,10,0],[cx-6,by-h+7,9,7,1],[cx+6,by-h+7,9,7,0]].forEach(([ex,ey,rx,ry,alt])=>
+        svgEl2.appendChild(svgEl('ellipse',{cx:ex,cy:ey,rx,ry,fill:alt?c.leaf2:c.leaf})));
+    }
+  }else{
+    const h={bud:17,bloom:30,fullbloom:44}[stage]||30;
+    svgEl2.appendChild(svgEl('rect',{x:cx-2,y:by-h,width:4,height:h,rx:2,fill:c.stem}));
+    if(stage==='bud'){
+      svgEl2.appendChild(svgEl('ellipse',{cx,cy:by-h,rx:6,ry:9,fill:c.petal}));
+    }else{
+      const pc=stage==='bloom'?5:8,pr=stage==='bloom'?7:10,dist=stage==='bloom'?6:9;
+      for(let i=0;i<pc;i++){
+        const a=(i/pc)*Math.PI*2;
+        const pe=svgEl('ellipse',{cx:cx+Math.cos(a)*dist,cy:(by-h)+Math.sin(a)*dist,rx:pr,ry:Math.round(pr*0.55),fill:i%2===0?c.petal:c.petal2});
+        pe.setAttribute('transform',`rotate(${a*180/Math.PI+90},${cx+Math.cos(a)*dist},${(by-h)+Math.sin(a)*dist})`);
+        svgEl2.appendChild(pe);
+      }
+      svgEl2.appendChild(svgEl('circle',{cx,cy:by-h,r:stage==='bloom'?4:6,fill:c.center}));
+    }
+  }
+}
+
+function currentStage(){
+  const p=pdata(selectedPlantId);
+  return p.stages[Math.min(Math.floor(growProgress/(100/CFG.growSteps)),p.stages.length-1)];
+}
+function updateLivePlant(){
+  const svg=document.getElementById('live-plant');
+  drawPlant(svg,selectedPlantId,currentStage(),68);
+  const p=pdata(selectedPlantId);
+  document.getElementById('live-plant-name').textContent=p.name;
+  const sn={seed:'씨앗 단계',sprout:'새싹 단계',sapling:'묘목 단계',tree:'완성 단계',bud:'봉오리 단계',bloom:'개화 단계',fullbloom:'만개 단계'};
+  document.getElementById('live-stage-label').textContent=sn[currentStage()]||'';
+  document.getElementById('grow-bar').style.width=growProgress+'%';
+  document.getElementById('grow-bar').style.background=acc();
+  const sessLeft=CFG.growSteps-Math.floor(growProgress/(100/CFG.growSteps));
+  document.getElementById('grow-hint').textContent=growProgress>=100?'완성! 숲에 심어졌어요':`완성까지 ${sessLeft}번 더 집중하면 돼요`;
+}
+
+function playSound(type){
+  if(!document.getElementById('toggle-sound').classList.contains('on'))return;
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const notes=type==='focus'?[523,659,784,1047]:type==='short'?[784,659]:[523,659,523];
+    notes.forEach((freq,i)=>{
+      const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+      osc.connect(gain);gain.connect(audioCtx.destination);
+      osc.type='sine';osc.frequency.value=freq;
+      const t=audioCtx.currentTime+i*0.18;
+      gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(0.18,t+0.04);gain.gain.exponentialRampToValueAtTime(0.001,t+0.38);
+      osc.start(t);osc.stop(t+0.4);
+    });
+  }catch(e){}
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',['timer','stats','collection','forest','settings'][i]===name);});
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if(name==='collection')renderCollection();
+  if(name==='forest')renderForest();
+  if(name==='stats'){renderTagList();renderHeatmap();}
+}
+
+function setMode(m,btn){
+  if(running)return;mode=m;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  const mins=m==='focus'?CFG.focus:m==='short'?CFG.short:CFG.long;
+  timeLeft=mins*60;totalTime=mins*60;
+  updateDisplay();document.getElementById('timer-label').textContent={focus:'집중 시간',short:'짧은 휴식',long:'긴 휴식'}[m];
+  updateRing(1);
+}
+function toggleTimer(){
+  running=!running;document.getElementById('start-btn').textContent=running?'일시정지':'시작';
+  if(running)iv=setInterval(tick,1000);else clearInterval(iv);
+}
+function resetTimer(){
+  running=false;clearInterval(iv);document.getElementById('start-btn').textContent='시작';
+  const mins=mode==='focus'?CFG.focus:mode==='short'?CFG.short:CFG.long;
+  timeLeft=mins*60;totalTime=mins*60;updateDisplay();updateRing(1);
+}
+function tick(){
+  timeLeft--;updateDisplay();updateRing(timeLeft/totalTime);
+  if(timeLeft<=0){
+    clearInterval(iv);running=false;document.getElementById('start-btn').textContent='시작';
+    playSound(mode);
+    if(mode==='focus'){
+      completedSessions++;todaySessions++;todayFocus+=CFG.focus;coins+=5;
+      growProgress=Math.min(100,growProgress+100/CFG.growSteps);
+      updateSummary();updateDots();updateLivePlant();
+      if(growProgress>=100){
+        forestPlants.push({plantId:selectedPlantId,x:Math.round(30+Math.random()*580),y:Math.round(55+Math.random()*120)});
+        growProgress=0;showToast('식물이 숲에 심어졌어요!');
+      }else showToast('+5 코인 획득!');
+      const auto=document.getElementById('toggle-auto').classList.contains('on');
+      const isLong=completedSessions%CFG.sessions===0;
+      setTimeout(()=>{
+        setMode(isLong?'long':'short',document.querySelectorAll('.mode-btn')[isLong?2:1]);
+        if(auto){running=true;document.getElementById('start-btn').textContent='일시정지';iv=setInterval(tick,1000);}
+      },300);
+    }else{
+      const auto=document.getElementById('toggle-auto').classList.contains('on');
+      setTimeout(()=>{
+        setMode('focus',document.querySelectorAll('.mode-btn')[0]);
+        if(auto){running=true;document.getElementById('start-btn').textContent='일시정지';iv=setInterval(tick,1000);}
+      },300);
+    }
+  }
+}
+function updateDisplay(){
+  const m=Math.floor(timeLeft/60),s=timeLeft%60;
+  document.getElementById('timer-display').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function updateRing(r){document.getElementById('ring').style.strokeDashoffset=CIRC*(1-r);}
+function updateSummary(){
+  document.getElementById('today-sessions').textContent=todaySessions;
+  document.getElementById('today-focus').textContent=todayFocus+'분';
+  document.getElementById('coins-display').textContent=coins;
+}
+function updateDots(){
+  const el=document.getElementById('dots');el.innerHTML='';
+  const pos=completedSessions%CFG.sessions;
+  for(let i=0;i<CFG.sessions;i++){
+    const d=document.createElement('div');d.className='dot';
+    if(i<pos||i===pos&&mode==='focus'){d.style.background=acc();if(i===pos)d.style.opacity='0.4';}
+    el.appendChild(d);
+  }
+}
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+function applySettings(){
+  CFG.focus=Math.max(1,parseInt(document.getElementById('set-focus').value)||25);
+  CFG.short=Math.max(1,parseInt(document.getElementById('set-short').value)||5);
+  CFG.long=Math.max(1,parseInt(document.getElementById('set-long').value)||15);
+  CFG.sessions=Math.max(2,parseInt(document.getElementById('set-sessions').value)||4);
+  CFG.growSteps=Math.max(1,parseInt(document.getElementById('set-grow').value)||2);
+  document.getElementById('grow-sub').textContent=`현재: ${CFG.growSteps}번 집중 = 나무 1그루`;
+  resetTimer();updateDots();updateLivePlant();
+}
+function applyThemeUI(){
+  const a=acc();
+  document.getElementById('ring').style.stroke=a;
+  document.getElementById('start-btn').style.background=a;
+  document.getElementById('grow-bar').style.background=a;
+  updateDots();
+  if(barChart){barChart.data.datasets[0].backgroundColor=a;barChart.update();}
+  renderHeatmap();renderTagList();renderForest();
+}
+
+function buildSeasonChips(){
+  const row=document.getElementById('season-row');
+  SEASONS.forEach(s=>{
+    const wrap=document.createElement('div');wrap.className='chip-wrap';
+    const chip=document.createElement('div');chip.className='s-chip'+(s.id===currentSeason.id?' active':'');chip.style.background=s.accent;
+    chip.onclick=()=>{currentSeason=s;useColorTheme=false;document.querySelectorAll('.s-chip').forEach(c=>c.classList.remove('active'));document.querySelectorAll('.c-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');applyThemeUI();};
+    const lbl=document.createElement('div');lbl.className='chip-lbl';lbl.textContent=s.label;
+    wrap.appendChild(chip);wrap.appendChild(lbl);row.appendChild(wrap);
+  });
+}
+function buildColorChips(){
+  const row=document.getElementById('color-row');
+  COLOR_THEMES.forEach(ct=>{
+    const chip=document.createElement('div');chip.className='c-chip';chip.style.background=ct.color;
+    chip.onclick=()=>{currentColor=ct;useColorTheme=true;document.querySelectorAll('.c-chip').forEach(c=>c.classList.remove('active'));document.querySelectorAll('.s-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');applyThemeUI();};
+    row.appendChild(chip);
+  });
+}
+
+let barChart=null;
+function initStats(){
+  const isDark=matchMedia('(prefers-color-scheme: dark)').matches;
+  const tc=isDark?'rgba(255,255,255,0.45)':'rgba(0,0,0,0.4)';
+  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
+  barChart=new Chart(document.getElementById('barChart'),{
+    type:'bar',
+    data:{labels:['월','화','수','목','금','토','일'],datasets:[{label:'집중',data:[125,100,150,75,200,50,175],backgroundColor:acc(),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:tc,font:{size:11}},grid:{color:gc},border:{display:false}},y:{ticks:{color:tc,font:{size:11},maxTicksLimit:4},grid:{color:gc},border:{display:false}}}}
+  });
+  renderTagList();renderHeatmap();
+}
+function renderTagList(){
+  const tl=document.getElementById('tag-list');tl.innerHTML='';
+  const total=tags.reduce((s,t)=>s+t.sessions,0)||1;
+  tags.forEach((tag,idx)=>{
+    const pct=Math.round(tag.sessions/total*100);
+    const row=document.createElement('div');row.className='tag-row';
+    row.innerHTML=`<span class="tag-name">${tag.name}</span><div class="tag-bar-wrap"><div class="tag-bar" style="width:${pct}%;background:${acc()}"></div></div><span class="tag-val">${pct}%</span><button class="tag-del" onclick="deleteTag(${idx})">×</button>`;
+    tl.appendChild(row);
+  });
+}
+function addTag(){
+  const input=document.getElementById('tag-input'),name=input.value.trim();
+  if(!name)return;
+  if(tags.find(t=>t.name===name)){showToast('이미 있는 태그예요');return;}
+  tags.push({name,sessions:0});input.value='';renderTagList();showToast('"'+name+'" 태그 추가!');
+}
+function deleteTag(idx){const n=tags[idx].name;tags.splice(idx,1);renderTagList();showToast('"'+n+'" 삭제됨');}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('tag-input').addEventListener('keydown',e=>{if(e.key==='Enter')addTag();});
+});
+function renderHeatmap(){
+  const hm=document.getElementById('heatmap');hm.innerHTML='';
+  const base=currentSeason.heatBase;
+  const levels=['var(--bg2)',base+'99',base+'bb',base+'dd',base];
+  for(let i=0;i<28;i++){const v=Math.floor(Math.random()*5);const cell=document.createElement('div');cell.className='heat-cell';cell.style.background=levels[v];hm.appendChild(cell);}
+}
+function setPeriod(p,btn){
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  const labels=p==='week'?['월','화','수','목','금','토','일']:['1주','2주','3주','4주'];
+  const data=p==='week'?[125,100,150,75,200,50,175]:[520,680,430,750];
+  barChart.data.labels=labels;barChart.data.datasets[0].data=data;barChart.update();
+}
+function renderCollection(){
+  document.getElementById('coins-col').textContent=coins;
+  const grid=document.getElementById('col-grid');grid.innerHTML='';
+  const a=acc();
+  (colFilter==='all'?PLANTS:PLANTS.filter(p=>p.type===colFilter)).forEach(p=>{
+    const card=document.createElement('div');
+    card.className='plant-card'+(p.unlocked?'':' locked')+(p.id===selectedPlantId?' selected':'');
+    if(p.id===selectedPlantId)card.style.borderColor=a;
+    const svg=document.createElementNS(ns,'svg');svg.setAttribute('width','54');svg.setAttribute('height','54');svg.setAttribute('viewBox','0 0 54 54');
+    drawPlant(svg,p.id,p.unlocked?p.stages[3]:'seed',54);
+    const rc={common:'r-common',rare:'r-rare',legend:'r-legend'}[p.rarity];
+    const rl={common:'일반',rare:'희귀',legend:'전설'}[p.rarity];
+    card.innerHTML=`<span class="rarity-badge ${rc}">${rl}</span>`;
+    card.appendChild(svg);
+    card.innerHTML+=`<div class="plant-card-name">${p.name}</div>`;
+    if(!p.unlocked)card.innerHTML+=`<div class="unlock-cost">코인 ${p.cost}개</div>`;
+    else if(p.id===selectedPlantId)card.innerHTML+=`<div class="plant-card-hint" style="color:${a};font-weight:500">선택됨</div>`;
+    card.onclick=()=>{
+      if(!p.unlocked){
+        if(coins>=p.cost){coins-=p.cost;p.unlocked=true;selectedPlantId=p.id;growProgress=0;showToast(p.name+' 해금!');renderCollection();updateLivePlant();updateSummary();}
+        else showToast('코인이 부족해요');
+      }else{selectedPlantId=p.id;growProgress=0;renderCollection();updateLivePlant();}
+    };
+    grid.appendChild(card);
+  });
+}
+function filterCol(f,btn){colFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderCollection();}
+function renderForest(){
+  const svg=document.getElementById('forest-svg'),empty=document.getElementById('forest-empty'),wrap=document.getElementById('forest-wrap');
+  wrap.style.background=currentSeason.sky;
+  document.getElementById('forest-sub').textContent=forestPlants.length?forestPlants.length+'그루의 식물이 자라고 있어요':'완료한 세션이 식물이 됩니다';
+  if(!forestPlants.length){svg.style.display='none';empty.style.display='block';return;}
+  svg.style.display='block';empty.style.display='none';svg.innerHTML='';
+  const W=640,H=220,groundY=H-30;
+  svg.appendChild(svgEl('rect',{x:0,y:0,width:W,height:groundY,fill:currentSeason.sky}));
+  svg.appendChild(svgEl('rect',{x:0,y:groundY,width:W,height:H-groundY,fill:currentSeason.ground}));
+  svg.appendChild(svgEl('ellipse',{cx:W/2,cy:groundY,rx:W/2+10,ry:10,fill:currentSeason.groundDark}));
+  [...forestPlants].sort((a,b)=>a.y-b.y).forEach(fp=>{
+    const g=document.createElementNS(ns,'svg');
+    const scale=0.55+((fp.y-55)/120)*0.5;
+    const sz=Math.round(54*scale);
+    g.setAttribute('x',Math.round(fp.x-sz/2));g.setAttribute('y',Math.round(groundY-sz));
+    g.setAttribute('width',sz);g.setAttribute('height',sz);g.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
+    drawPlant(g,fp.plantId,pdata(fp.plantId).stages[3],sz);svg.appendChild(g);
+  });
+}
+
+updateDots();updateDisplay();updateRing(1);updateLivePlant();
+
+/* localStorage persistence */
+function saveState(){
+  const state={CFG,coins,growProgress,selectedPlantId,forestPlants,tags,todaySessions,todayFocus,completedSessions,
+    unlockedPlants:PLANTS.filter(p=>p.unlocked).map(p=>p.id)};
+  try{localStorage.setItem('pomodoroState',JSON.stringify(state));}catch(e){}
+}
+function loadState(){
+  try{
+    const state=JSON.parse(localStorage.getItem('pomodoroState'));
+    if(!state)return;
+    if(state.CFG)Object.assign(CFG,state.CFG);
+    if(state.coins!=null)coins=state.coins;
+    if(state.growProgress!=null)growProgress=state.growProgress;
+    if(state.selectedPlantId)selectedPlantId=state.selectedPlantId;
+    if(state.forestPlants)forestPlants=state.forestPlants;
+    if(state.tags)tags=state.tags;
+    if(state.todaySessions)todaySessions=state.todaySessions;
+    if(state.todayFocus)todayFocus=state.todayFocus;
+    if(state.completedSessions)completedSessions=state.completedSessions;
+    if(state.unlockedPlants)state.unlockedPlants.forEach(id=>{const p=pdata(id);if(p)p.unlocked=true;});
+    document.getElementById('set-focus').value=CFG.focus;
+    document.getElementById('set-short').value=CFG.short;
+    document.getElementById('set-long').value=CFG.long;
+    document.getElementById('set-sessions').value=CFG.sessions;
+    document.getElementById('set-grow').value=CFG.growSteps;
+    document.getElementById('grow-sub').textContent=`현재: ${CFG.growSteps}번 집중 = 나무 1그루`;
+    const mins=CFG.focus; timeLeft=mins*60; totalTime=mins*60;
+    updateDisplay();updateRing(1);updateDots();updateSummary();updateLivePlant();
+  }catch(e){}
+}
+
+/* patch tick/applySettings/collection/tag to save */
+const _origTick=tick;
+['addTag','deleteTag','applySettings','filterCol','renderCollection'].forEach(fn=>{
+  const orig=window[fn];
+  if(orig)window[fn]=function(){orig.apply(this,arguments);saveState();};
+});
+
+loadState();
+setTimeout(initStats,80);
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
