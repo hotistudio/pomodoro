@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>뽀모도로</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f3;
+    --bg3: #eeede8;
+    --text: #1a1a18;
+    --text2: #6b6b67;
+    --text3: #9b9b97;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --acc: #e24b4a;
+    --acc-dark: #a32d2d;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2c;
+      --text: #f0efe8; --text2: #9b9b97; --text3: #6b6b67;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 360px;
+    min-height: 560px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--text);
+    overflow-x: hidden;
+  }
+  .header {
+    padding: 14px 16px 10px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title { font-size: 15px; font-weight: 500; }
+  .header-sub { font-size: 11px; color: var(--text2); }
+
+  .tabs {
+    display: flex; gap: 2px;
+    background: var(--bg2); padding: 3px; margin: 10px 12px;
+    border-radius: var(--radius-md);
+  }
+  .tab {
+    flex: 1; padding: 6px 2px; border: none; background: transparent;
+    cursor: pointer; border-radius: 6px; font-size: 11px;
+    color: var(--text2); font-weight: 400; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .tab.active {
+    background: var(--bg); color: var(--text); font-weight: 500;
+    border: 0.5px solid var(--border);
+  }
+  .view { display: none; padding: 0 12px 14px; }
+  .view.active { display: block; }
+
+  /* Timer */
+  .mode-btns { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
+  .mode-btn {
+    padding: 5px 12px; border: 0.5px solid var(--border2);
+    background: transparent; border-radius: 16px; cursor: pointer;
+    font-size: 12px; color: var(--text2); font-family: inherit; transition: all 0.15s;
+  }
+  .mode-btn.active { background: var(--bg2); color: var(--text); font-weight: 500; }
+
+  .timer-ring { position: relative; width: 176px; height: 176px; margin: 0 auto 12px; }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+  .ring-fill { fill: none; stroke: var(--acc); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .timer-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+  .timer-display { font-size: 40px; font-weight: 500; color: var(--text); letter-spacing: -1px; }
+  .timer-label { font-size: 12px; color: var(--text2); margin-top: 1px; }
+
+  .controls { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
+  .ctrl-btn {
+    padding: 8px 22px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--border2); background: transparent;
+    cursor: pointer; font-size: 13px; color: var(--text); font-weight: 500; font-family: inherit; transition: all 0.15s;
+  }
+  .ctrl-btn:hover { background: var(--bg2); }
+  .ctrl-btn.primary { background: var(--acc); color: #fff; border-color: transparent; }
+  .ctrl-btn.primary:hover { background: var(--acc-dark); }
+
+  .session-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+  .dot.done { background: var(--acc); }
+  .dot.current { background: var(--acc); opacity: 0.4; }
+
+  .plant-area {
+    background: var(--bg2); border-radius: var(--radius-lg);
+    padding: 10px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px;
+  }
+  .plant-wrap { width: 60px; height: 60px; flex-shrink: 0; }
+  .plant-info { flex: 1; }
+  .plant-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .plant-stage { font-size: 11px; color: var(--text2); margin-top: 1px; margin-bottom: 5px; }
+  .grow-wrap { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .grow-bar { height: 100%; background: var(--acc); border-radius: 3px; transition: width 0.5s; }
+  .grow-hint { font-size: 10px; color: var(--text3); margin-top: 4px; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .metric { background: var(--bg2); border-radius: var(--radius-md); padding: 10px 8px; text-align: center; }
+  .metric-val { font-size: 18px; font-weight: 500; color: var(--text); }
+  .metric-lbl { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+  /* Stats */
+  .stat-header { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
+  .period-btns { display: flex; gap: 3px; background: var(--bg2); border-radius: var(--radius-md); padding: 3px; margin-bottom: 10px; }
+  .period-btn { flex:1; padding: 5px; border: none; background: transparent; cursor: pointer; border-radius: 5px; font-size: 12px; color: var(--text2); font-family: inherit; transition: all 0.15s; }
+  .period-btn.active { background: var(--bg); color: var(--text); font-weight: 500; border: 0.5px solid var(--border); }
+  .chart-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 10px; margin-bottom: 10px; }
+  .chart-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .chart-sub { font-size: 10px; color: var(--text3); font-weight: 400; }
+  .tag-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .tag-name { font-size: 11px; color: var(--text2); width: 44px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-bar-wrap { flex: 1; height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+  .tag-bar { height: 100%; background: var(--acc); border-radius: 3px; transition: width 0.4s; }
+  .tag-pct { font-size: 11px; color: var(--text2); width: 28px; text-align: right; }
+  .tag-del { width: 16px; height: 16px; border-radius: 50%; border: 0.5px solid var(--border2); background: transparent; cursor: pointer; font-size: 12px; color: var(--text2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; line-height: 1; }
+  .add-tag-row { display: flex; gap: 6px; margin-top: 6px; }
+  .add-tag-row input { flex:1; padding: 5px 8px; border: 0.5px solid var(--border2); border-radius: var(--radius-md); background: var(--bg); color: var(--text); font-size: 12px; font-family: inherit; outline: none; }
+  .add-tag-btn { padding: 5px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius-md); background: transparent; cursor: pointer; font-size: 12px; color: var(--text); font-family: inherit; }
+  .week-labels { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 3px; }
+  .week-label { font-size: 9px; color: var(--text3); text-align: center; }
+  .heatmap { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .heat-cell { aspect-ratio: 1; border-radius: 2px; }
+
+  /* Collection */
+  .coin-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .coin-badge { display: flex; align-items: center; gap: 6px; background: var(--bg2); border-radius: 16px; padding: 6px 11px; }
+  .coin-dot { width: 14px; height: 14px; border-radius: 50%; background: #ef9f27; }
+  .filter-btns { display: flex; gap: 4px; }
+  .filter-btn { padding: 4px 9px; border: 0.5px solid var(--border2); background: transparent; border-radius: 12px; cursor: pointer; font-size: 11px; color: var(--text2); font-family: inherit; transition: all 0.15s; }
+  .filter-btn.active { background: var(--bg2); color: var(--text); font-weight: 500; }
+  .col-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+  .plant-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 10px 6px; text-align: center; cursor: pointer; position: relative; transition: border-color 0.15s; }
+  .plant-card:hover { border-color: var(--border2); }
+  .plant-card.locked { opacity: 0.45; }
+  .plant-card.selected { border: 1.5px solid var(--acc); }
+  .rarity-badge { position: absolute; top: 5px; right: 5px; font-size: 9px; padding: 1px 4px; border-radius: 5px; font-weight: 500; }
+  .r-common { background:#eaf3de;color:#3b6d11; }
+  .r-rare { background:#e6f1fb;color:#185fa5; }
+  .r-legend { background:#faeeda;color:#854f0b; }
+  .plant-card-name { font-size: 11px; font-weight: 500; color: var(--text); margin-top: 5px; }
+  .unlock-cost { font-size: 10px; color: #854f0b; margin-top: 2px; font-weight: 500; }
+  .selected-hint { font-size: 10px; color: var(--acc); margin-top: 2px; font-weight: 500; }
+
+  /* Forest */
+  .forest-wrap { border-radius: var(--radius-lg); width: 100%; height: 180px; position: relative; overflow: hidden; margin-bottom: 10px; background: #fbeaf0; }
+  .forest-empty { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 12px; color: var(--text2); text-align: center; line-height: 1.7; }
+  .forest-sub { font-size: 12px; color: var(--text2); margin-top: 2px; margin-bottom: 8px; }
+  .streak-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+  .streak-icon { width: 32px; height: 32px; border-radius: 50%; background: #fcebeb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .streak-flame { width: 12px; height: 16px; background: var(--acc); border-radius: 50% 50% 40% 40%; }
+  .streak-days { font-size: 18px; font-weight: 500; color: var(--text); }
+  .streak-desc { font-size: 11px; color: var(--text2); }
+  .streak-reward { font-size: 10px; color: var(--acc-dark); font-weight: 500; margin-top: 1px; }
+
+  /* Settings */
+  .settings-group { margin-bottom: 14px; }
+  .settings-title { font-size: 10px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 0.5px solid var(--border); }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-lbl { font-size: 13px; color: var(--text); }
+  .setting-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+  .setting-input { width: 56px; text-align: center; padding: 5px; border: 0.5px solid var(--border2); border-radius: var(--radius-md); background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
+  .toggle { width: 36px; height: 20px; background: var(--border2); border-radius: 10px; cursor: pointer; position: relative; transition: background 0.2s; border: none; flex-shrink: 0; }
+  .toggle.on { background: var(--acc); }
+  .toggle::after { content:''; position: absolute; width: 14px; height: 14px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: left 0.2s; }
+  .toggle.on::after { left: 19px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%) translateY(50px); background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius-md); padding: 7px 14px; font-size: 12px; color: var(--text); white-space: nowrap; transition: transform 0.3s; z-index: 999; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="header-title">🌱 뽀모도로</div>
+    <div class="header-sub">집중할수록 숲이 자라요</div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('timer')">타이머</button>
+  <button class="tab" onclick="switchTab('stats')">통계</button>
+  <button class="tab" onclick="switchTab('collection')">수집</button>
+  <button class="tab" onclick="switchTab('forest')">내 숲</button>
+  <button class="tab" onclick="switchTab('settings')">설정</button>
+</div>
+
+<!-- TIMER -->
+<div id="view-timer" class="view active">
+  <div class="mode-btns">
+    <button class="mode-btn active" onclick="setMode('focus',this)">집중</button>
+    <button class="mode-btn" onclick="setMode('short',this)">짧은 휴식</button>
+    <button class="mode-btn" onclick="setMode('long',this)">긴 휴식</button>
+  </div>
+  <div class="timer-ring">
+    <svg width="176" height="176" viewBox="0 0 176 176">
+      <circle class="ring-bg" cx="88" cy="88" r="78"/>
+      <circle class="ring-fill" id="ring" cx="88" cy="88" r="78" stroke-dasharray="490" stroke-dashoffset="0"/>
+    </svg>
+    <div class="timer-center">
+      <div class="timer-display" id="timer-display">25:00</div>
+      <div class="timer-label" id="timer-label">집중 시간</div>
+    </div>
+  </div>
+  <div class="session-dots" id="dots"></div>
+  <div class="controls">
+    <button class="ctrl-btn" onclick="resetTimer()">리셋</button>
+    <button class="ctrl-btn primary" id="start-btn" onclick="toggleTimer()">시작</button>
+  </div>
+  <div class="plant-area">
+    <div class="plant-wrap"><svg id="live-plant" width="60" height="60" viewBox="0 0 60 60"></svg></div>
+    <div class="plant-info">
+      <div class="plant-name" id="live-plant-name">참나무</div>
+      <div class="plant-stage" id="live-stage">씨앗 단계</div>
+      <div class="grow-wrap"><div class="grow-bar" id="grow-bar" style="width:0%"></div></div>
+      <div class="grow-hint" id="grow-hint">집중 완료 시 성장해요</div>
+    </div>
+  </div>
+  <div class="summary">
+    <div class="metric"><div class="metric-val" id="today-sessions">0</div><div class="metric-lbl">오늘 세션</div></div>
+    <div class="metric"><div class="metric-val" id="today-focus">0분</div><div class="metric-lbl">집중 시간</div></div>
+    <div class="metric"><div class="metric-val" id="coins-display">20</div><div class="metric-lbl">보유 코인</div></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div id="view-stats" class="view">
+  <div class="stat-header">
+    <div class="metric"><div class="metric-val">14h</div><div class="metric-lbl">이번 주 집중</div></div>
+    <div class="metric"><div class="metric-val">34</div><div class="metric-lbl">완료 세션</div></div>
+    <div class="metric"><div class="metric-val">3일</div><div class="metric-lbl">연속 달성</div></div>
+  </div>
+  <div class="period-btns">
+    <button class="period-btn active" onclick="setPeriod('week',this)">주간</button>
+    <button class="period-btn" onclick="setPeriod('month',this)">월간</button>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">일별 집중 시간 (분)</div>
+    <div style="position:relative;height:120px;"><canvas id="barChart" role="img" aria-label="일별 집중 시간"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title"><span>태그별 분류</span><span class="chart-sub">편집 가능</span></div>
+    <div id="tag-list"></div>
+    <div class="add-tag-row">
+      <input id="tag-input" type="text" placeholder="새 태그" maxlength="10"/>
+      <button class="add-tag-btn" onclick="addTag()">추가</button>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">활동 히트맵 (28일)</div>
+    <div class="week-labels"><span class="week-label">월</span><span class="week-label">화</span><span class="week-label">수</span><span class="week-label">목</span><span class="week-label">금</span><span class="week-label">토</span><span class="week-label">일</span></div>
+    <div class="heatmap" id="heatmap"></div>
+  </div>
+</div>
+
+<!-- COLLECTION -->
+<div id="view-collection" class="view">
+  <div class="coin-bar">
+    <div class="coin-badge"><div class="coin-dot"></div><span style="font-size:13px;font-weight:500;color:var(--text);" id="coins-col">20</span><span style="font-size:11px;color:var(--text2);margin-left:2px;">코인</span></div>
+    <div class="filter-btns">
+      <button class="filter-btn active" onclick="filterCol('all',this)">전체</button>
+      <button class="filter-btn" onclick="filterCol('tree',this)">나무</button>
+      <button class="filter-btn" onclick="filterCol('flower',this)">꽃</button>
+    </div>
+  </div>
+  <div class="col-grid" id="col-grid"></div>
+</div>
+
+<!-- FOREST -->
+<div id="view-forest" class="view">
+  <div style="font-size:13px;font-weight:500;color:var(--text);">나의 숲</div>
+  <div class="forest-sub" id="forest-sub">완료한 세션이 식물이 됩니다</div>
+  <div class="forest-wrap">
+    <div class="forest-empty" id="forest-empty">아직 숲이 비어있어요<br>집중 세션을 완료해보세요</div>
+    <svg id="forest-svg" width="100%" height="180" viewBox="0 0 336 180" style="display:none;"></svg>
+  </div>
+  <div class="streak-card">
+    <div class="streak-icon"><div class="streak-flame"></div></div>
+    <div>
+      <div class="streak-days">3일</div>
+      <div class="streak-desc">연속 달성 중</div>
+      <div class="streak-reward">5일 달성 시 희귀 씨앗 획득!</div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="view-settings" class="view">
+  <div class="settings-group">
+    <div class="settings-title">시간 설정</div>
+    <div class="setting-row"><div><div class="setting-lbl">집중 시간</div><div class="setting-sub">분</div></div><input class="setting-input" type="number" id="set-focus" value="25" min="1" max="90" onchange="applySettings()"></div>
+    <div class="setting-row"><div><div class="setting-lbl">짧은 휴식</div><div class="setting-sub">분</div></div><input class="setting-input" type="number" id="set-short" value="5" min="1" max="30" onchange="applySettings()"></div>
+    <div class="setting-row"><div><div class="setting-lbl">긴 휴식</div><div class="setting-sub">분</div></div><input class="setting-input" type="number" id="set-long" value="15" min="1" max="60" onchange="applySettings()"></div>
+    <div class="setting-row"><div><div class="setting-lbl">긴 휴식 주기</div><div class="setting-sub">세션 수</div></div><input class="setting-input" type="number" id="set-sessions" value="4" min="2" max="8" onchange="applySettings()"></div>
+  </div>
+  <div class="settings-group">
+    <div class="settings-title">식물 성장</div>
+    <div class="setting-row"><div><div class="setting-lbl">완성까지 세션 수</div><div class="setting-sub" id="grow-sub">현재: 2번 = 나무 1그루</div></div><input class="setting-input" type="number" id="set-grow" value="2" min="1" max="8" onchange="applySettings()"></div>
+  </div>
+  <div class="settings-group" style="margin-bottom:0;">
+    <div class="settings-title">알림 / 자동화</div>
+    <div class="setting-row"><div><div class="setting-lbl">완료 사운드</div><div class="setting-sub">세션 끝날 때</div></div><button class="toggle on" id="toggle-sound" onclick="this.classList.toggle('on')"></button></div>
+    <div class="setting-row"><div><div class="setting-lbl">휴식 후 자동 시작</div></div><button class="toggle" id="toggle-auto" onclick="this.classList.toggle('on')"></button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
