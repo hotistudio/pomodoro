@@ -1,4 +1,4 @@
-const CACHE = 'pomodoro-v1';
+const CACHE = 'pomodoro-v2-20260412';
 const FILES = ['./', './index.html', './manifest.json', './icons/icon192.png', './icons/icon512.png'];
 
 self.addEventListener('install', e => {
