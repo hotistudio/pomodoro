@@ -2,8 +2,18 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>전통 뽀모도로 타이머</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0a0f28">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="뽀모도로">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" type="image/png" href="./favicon.png">
+
 <style>
 
   @font-face {
@@ -386,6 +396,26 @@
   </div>
 
 <script>
+
+  // 스토리지 — 일반 브라우저(localStorage) 환경 호환
+  if (!window.storage) {
+    window.storage = {
+      async get(key) {
+        const v = localStorage.getItem(key);
+        return v === null ? null : { key, value: v };
+      },
+      async set(key, value) {
+        localStorage.setItem(key, value);
+        return { key, value };
+      },
+      async delete(key) {
+        localStorage.removeItem(key);
+        return { key, deleted: true };
+      }
+    };
+  }
+
+
   // 설정
   let focusTime = 25 * 60;
   let shortBreak = 5 * 60;
@@ -868,6 +898,15 @@
     updateDisplay();
     updateModeLabel();
   })();
+
+  // Service Worker 등록 (PWA)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('SW 등록 성공:', reg.scope))
+        .catch(err => console.log('SW 등록 실패:', err));
+    });
+  }
 </script>
 </body>
 </html>

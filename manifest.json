@@ -1,14 +1,26 @@
 {
-  "name": "뽀모도로 타이머",
+  "name": "전통 뽀모도로",
   "short_name": "뽀모도로",
-  "description": "집중할수록 숲이 자라는 뽀모도로 타이머",
-  "start_url": "./index.html",
+  "description": "한국 전통 디자인의 뽀모도로 타이머",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#e24b4a",
   "orientation": "portrait",
+  "background_color": "#1a1a1a",
+  "theme_color": "#0a0f28",
+  "lang": "ko",
   "icons": [
-    { "src": "icons/icon192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icons/icon512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }
