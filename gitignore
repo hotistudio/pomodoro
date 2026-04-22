@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 빌드 / 임시 파일
+node_modules/
+*.log
