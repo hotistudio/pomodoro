@@ -1,6 +1,9 @@
 // Service Worker — 전통 뽀모도로 PWA
-// 캐시 버전을 올리면 기존 캐시가 갱신됩니다
-const CACHE_NAME = 'pomodoro-v1';
+// 이 파일이 수정되면 브라우저가 자동으로 새 SW를 설치합니다.
+// 캐시 버전(CACHE_NAME)이 바뀌면 기존 캐시도 삭제됩니다.
+//
+// Build: 2026-04-22T05:58:00Z
+const CACHE_NAME = 'pomodoro-v2';
 
 // 오프라인에서도 작동해야 하는 필수 파일들
 const ASSETS = [
